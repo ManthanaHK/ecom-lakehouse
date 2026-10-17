@@ -1,0 +1,58 @@
+services:
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: kafka
+    ports: ["9092:9092"]
+    mem_limit: 1g
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    command: server /data --console-address ":9001"
+    ports: ["9000:9000", "9001:9001"]
+    mem_limit: 512m
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    volumes: ["./data/minio:/data"]
+
+  minio-init:
+    image: minio/mc
+    depends_on: [minio]
+    restart: "no"
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minio minio12345; do sleep 2; done;
+      mc mb -p local/lakehouse local/checkpoints;
+      exit 0;"
+
+  postgres:
+    image: postgres:16
+    profiles: ["serving"]
+    ports: ["5432:5432"]
+    mem_limit: 512m
+    environment:
+      POSTGRES_USER: dw
+      POSTGRES_PASSWORD: dw
+      POSTGRES_DB: warehouse
+    volumes: ["./data/pg:/var/lib/postgresql/data"]
+
+  metabase:
+    image: metabase/metabase
+    profiles: ["serving"]
+    ports: ["3000:3000"]
+    mem_limit: 1500m
+    environment:
+      JAVA_OPTS: "-Xmx1g"
