@@ -9,6 +9,8 @@ def get_spark(app_name: str) -> SparkSession:
         .config("spark.sql.shuffle.partitions", "4")
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+        .config("spark.ui.showConsoleProgress", "false")
+        .config("spark.databricks.delta.snapshotPartitions", "4")
         # MinIO as S3
         .config("spark.hadoop.fs.s3a.endpoint", "http://localhost:9000")
         .config("spark.hadoop.fs.s3a.access.key", "minio")
